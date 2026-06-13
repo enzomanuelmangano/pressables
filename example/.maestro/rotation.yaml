@@ -1,7 +1,8 @@
 # 1000-item list of rotation pressables: renders, scrolls, survives.
 appId: reactiive.pressables.example
 ---
-- launchApp
+- launchApp:
+    clearState: true
 - assertVisible: 'Rotation Example'
 - tapOn:
     id: 'nav-rotation'

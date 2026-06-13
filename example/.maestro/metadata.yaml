@@ -1,7 +1,8 @@
 # Theme-metadata screen: renders, themed pressables respond + survive.
 appId: reactiive.pressables.example
 ---
-- launchApp
+- launchApp:
+    clearState: true
 - assertVisible: 'Theme Metadata'
 - tapOn:
     id: 'nav-metadata'

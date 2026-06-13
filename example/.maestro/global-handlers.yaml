@@ -1,7 +1,8 @@
 # Global-handlers screen: renders, pressables fire + survive.
 appId: reactiive.pressables.example
 ---
-- launchApp
+- launchApp:
+    clearState: true
 - assertVisible: 'Global Handlers + Metadata'
 - tapOn:
     id: 'nav-global'

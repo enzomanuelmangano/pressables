@@ -1,7 +1,8 @@
 # pressto per-press toggle + single-selection (isToggled / isSelected).
 appId: reactiive.pressables.example
 ---
-- launchApp
+- launchApp:
+    clearState: true
 # wait for home to mount (published ennio has no launch-readiness gate yet)
 - assertVisible: 'Toggle Options'
 - tapOn:
