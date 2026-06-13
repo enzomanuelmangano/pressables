@@ -20,6 +20,7 @@ export default function Page() {
   return (
     <View style={styles.container}>
       <PressableHighlight
+        testID="nav-rotation"
         onPress={() => router.navigate('/screen')}
         style={styles.button}
       >
@@ -27,6 +28,7 @@ export default function Page() {
       </PressableHighlight>
 
       <PressableHighlight
+        testID="nav-options"
         onPress={() => router.navigate('/options-example')}
         style={styles.button}
       >
@@ -34,6 +36,7 @@ export default function Page() {
       </PressableHighlight>
 
       <PressableHighlight
+        testID="nav-metadata"
         onPress={() => router.navigate('/metadata-example')}
         style={styles.button}
       >
@@ -41,6 +44,7 @@ export default function Page() {
       </PressableHighlight>
 
       <PressableHighlight
+        testID="nav-global"
         onPress={() => router.navigate('/global-handlers-example')}
         style={styles.button}
       >

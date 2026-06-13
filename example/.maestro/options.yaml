@@ -1,9 +1,11 @@
 # pressto per-press toggle + single-selection (isToggled / isSelected).
-# Each button mirrors its pressto options into a status label we assert.
 appId: reactiive.pressables.example
 ---
 - launchApp
-- tapOn: 'Toggle Options'
+# wait for home to mount (published ennio has no launch-readiness gate yet)
+- assertVisible: 'Toggle Options'
+- tapOn:
+    id: 'nav-options'
 - assertVisible: 'Pressable Options Demo'
 # Button 1 starts un-toggled; a press flips it, another press flips it back.
 - assertVisible: 'btn1 toggled=false'

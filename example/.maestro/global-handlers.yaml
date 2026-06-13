@@ -2,7 +2,9 @@
 appId: reactiive.pressables.example
 ---
 - launchApp
-- tapOn: 'Global Handlers + Metadata'
+- assertVisible: 'Global Handlers + Metadata'
+- tapOn:
+    id: 'nav-global'
 - assertVisible: 'Checkout'
 - tapOn: 'Checkout'
 - tapOn: 'Cancel'

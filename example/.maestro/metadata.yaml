@@ -2,7 +2,9 @@
 appId: reactiive.pressables.example
 ---
 - launchApp
-- tapOn: 'Theme Metadata'
+- assertVisible: 'Theme Metadata'
+- tapOn:
+    id: 'nav-metadata'
 - assertVisible: 'Metadata Theme Example'
 - tapOn: 'Primary Button'
 - tapOn: 'Secondary (Toggle)'
