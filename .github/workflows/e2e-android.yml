@@ -66,14 +66,40 @@ jobs:
             build-tools;${{ env.BUILD_TOOLS }}
             ndk;${{ env.NDK_VERSION }}
 
+      - name: Cache bun store
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('example/android/**/*.gradle*', 'example/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
       - name: Install JS deps
         run: bun install --frozen-lockfile
 
       - name: Build pressto
         run: bun run prepare
 
-      # --- Build the ennio Android agent from source -------------------
+      # --- ennio Android agent (.so + ptrace injector) -----------------
+      # Built from an ennio checkout (NDK); cached by ennio ref since it
+      # rarely changes. Cache hit skips the checkout + NDK build.
+      - name: Cache ennio agent
+        id: agent-cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/ennio-android
+          key: ennio-agent-${{ env.ENNIO_ABI }}-${{ env.ENNIO_REF }}
+
       - name: Checkout ennio
+        if: steps.agent-cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v4
         with:
           repository: enzomanuelmangano/ennio
@@ -82,6 +108,7 @@ jobs:
           persist-credentials: false
 
       - name: Build ennio Android agent (.so + ptrace injector)
+        if: steps.agent-cache.outputs.cache-hit != 'true'
         working-directory: .ennio-src/packages/ennio
         env:
           ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}

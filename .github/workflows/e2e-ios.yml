@@ -41,6 +41,13 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -switch /Applications/Xcode_26.0.app
 
+      - name: Cache bun store
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+
       - name: Install JS deps
         run: bun install --frozen-lockfile
 
@@ -48,11 +55,33 @@ jobs:
       - name: Build pressto
         run: bun run prepare
 
+      # Cache the generated native project + CocoaPods, keyed on the Expo
+      # fingerprint — a cache hit skips prebuild + pod install entirely.
+      - name: Compute Expo fingerprint
+        id: fp
+        working-directory: example
+        run: |
+          npx --yes @expo/fingerprint fingerprint:generate --platform ios > /tmp/fp.json
+          echo "key=$(jq -r '.hash' /tmp/fp.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache iOS prebuild + Pods
+        id: ios-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            example/ios
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods/repos
+          key: ios-prebuild-${{ runner.os }}-${{ steps.fp.outputs.key }}
+          restore-keys: ios-prebuild-${{ runner.os }}-
+
       - name: Prebuild iOS project
+        if: steps.ios-cache.outputs.cache-hit != 'true'
         working-directory: example
         run: npx expo prebuild --platform ios --clean
 
       - name: Pod install
+        if: steps.ios-cache.outputs.cache-hit != 'true'
         working-directory: example/ios
         run: pod install
 
