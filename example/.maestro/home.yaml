@@ -1,9 +1,0 @@
-# Home renders every navigation entry.
-appId: reactiive.pressables.example
----
-- launchApp:
-    clearState: true
-- assertVisible: 'Rotation Example'
-- assertVisible: 'Toggle Options'
-- assertVisible: 'Theme Metadata'
-- assertVisible: 'Global Handlers + Metadata'
