@@ -25,6 +25,7 @@ const PressableRotate = createAnimatedPressable((progress) => {
 export default function App() {
   return (
     <FlatList
+      testID="rotation-list"
       contentContainerStyle={styles.container}
       data={new Array(1000).fill(0)}
       renderItem={() => {

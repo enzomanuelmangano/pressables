@@ -1,0 +1,151 @@
+# ennio e2e — example app on the Android emulator.
+#
+# Unlike iOS, the published @reactiive/ennio does NOT ship the Android agent
+# (libennio.so + ptrace injector) yet, so we build it from an ennio checkout
+# and point the CLI at it via ENNIO_ANDROID_AGENT / ENNIO_ANDROID_INJECTOR.
+# (Once ennio publishes Android binaries this whole agent-build job drops to a
+# plain `npx @reactiive/ennio --android`.)
+#
+# Flow: build the agent (NDK) → build the example release APK (JS bundled, no
+# Metro) → boot a rootable AOSP emulator → adb install → ennio test --android.
+name: e2e-android
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'example/**'
+      - '.github/workflows/e2e-android.yml'
+  workflow_dispatch:
+    inputs:
+      ennio_ref:
+        description: 'ennio git ref to build the Android agent from'
+        type: string
+        default: main
+
+env:
+  ENNIO_ABI: x86_64
+  ANDROID_API: '34'
+  NDK_VERSION: '27.1.12297006'
+  BUILD_TOOLS: '35.0.0'
+  ENNIO_REF: ${{ github.event.inputs.ennio_ref || 'main' }}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: example e2e (Android emulator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.19
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK (+ NDK)
+        uses: android-actions/setup-android@v3
+        with:
+          packages: >-
+            platform-tools
+            platforms;android-${{ env.ANDROID_API }}
+            build-tools;${{ env.BUILD_TOOLS }}
+            ndk;${{ env.NDK_VERSION }}
+
+      - name: Cache bun store
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('example/android/**/*.gradle*', 'example/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Install JS deps
+        run: bun install --frozen-lockfile
+
+      - name: Build pressto
+        run: bun run prepare
+
+      # --- ennio Android agent (.so + ptrace injector) -----------------
+      # Built from an ennio checkout (NDK); cached by ennio ref since it
+      # rarely changes. Cache hit skips the checkout + NDK build.
+      - name: Cache ennio agent
+        id: agent-cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/ennio-android
+          key: ennio-agent-${{ env.ENNIO_ABI }}-${{ env.ENNIO_REF }}
+
+      - name: Checkout ennio
+        if: steps.agent-cache.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: enzomanuelmangano/ennio
+          ref: ${{ env.ENNIO_REF }}
+          path: .ennio-src
+          persist-credentials: false
+
+      - name: Build ennio Android agent (.so + ptrace injector)
+        if: steps.agent-cache.outputs.cache-hit != 'true'
+        working-directory: .ennio-src/packages/ennio
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
+        run: ENNIO_ABI=x86_64 bash android-inject/scripts/build-android.sh
+
+      # --- Build the example release APK (JS bundled, no Metro) --------
+      - name: Prebuild Android project
+        working-directory: example
+        run: npx expo prebuild --platform android --clean
+
+      - name: Assemble release APK
+        working-directory: example/android
+        run: ./gradlew :app:assembleRelease --no-daemon
+
+      - name: Locate APK
+        run: |
+          APK=$(find example/android/app/build/outputs/apk/release -name '*.apk' | head -n1)
+          test -n "$APK" || { echo "release APK not found"; exit 1; }
+          echo "APK_PATH=$GITHUB_WORKSPACE/$APK" >> "$GITHUB_ENV"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run e2e on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          ENNIO_ANDROID_AGENT: /tmp/ennio-android/libennio.so
+          ENNIO_ANDROID_INJECTOR: /tmp/ennio-android/ennio_ptrace
+        with:
+          api-level: ${{ env.ANDROID_API }}
+          arch: x86_64
+          target: default            # AOSP image → `adb root` works (ptrace inject)
+          force-avd-creation: true
+          emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -no-audio -no-boot-anim
+          disable-animations: true
+          script: bash scripts/ci-android-e2e.sh
