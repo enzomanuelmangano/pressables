@@ -148,20 +148,4 @@ jobs:
           force-avd-creation: true
           emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -no-audio -no-boot-anim
           disable-animations: true
-          script: |
-            adb install -r -g "$APK_PATH"
-            PASS=0; FAIL=0
-            for f in example/.maestro/*.yaml; do
-              if npx --yes @reactiive/ennio test "$f" --android --disable-reuse-app --verbose; then
-                PASS=$((PASS+1))
-              else
-                echo "RETRY $f"
-                if npx --yes @reactiive/ennio test "$f" --android --disable-reuse-app --verbose; then
-                  PASS=$((PASS+1))
-                else
-                  echo "FAIL $f"; FAIL=$((FAIL+1))
-                fi
-              fi
-            done
-            echo "Android e2e: pass=$PASS fail=$FAIL"
-            [ "$FAIL" -eq 0 ]
+          script: bash scripts/ci-android-e2e.sh
