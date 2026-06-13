@@ -122,11 +122,11 @@ jobs:
           set -euxo pipefail
           PASS=0; FAIL=0
           for f in .maestro/*.yaml; do
-            if npx --yes @reactiive/ennio test "$f" --verbose; then
+            if npx --yes @reactiive/ennio test "$f" --disable-reuse-app --verbose; then
               PASS=$((PASS+1))
             else
               echo "RETRY $f"
-              if npx --yes @reactiive/ennio test "$f" --verbose; then
+              if npx --yes @reactiive/ennio test "$f" --disable-reuse-app --verbose; then
                 PASS=$((PASS+1))
               else
                 echo "FAIL $f"; FAIL=$((FAIL+1))
