@@ -18,7 +18,7 @@ appId: reactiive.pressables.example
 - assertVisible: 'btn1 toggled=false'
 # Button 2 starts toggled (initialToggled).
 - assertVisible: 'btn2 toggled=true'
-# isSelected: pressing Button 3 makes it the selected pressable.
+# Button 3: pressing it toggles it on.
 - tapOn:
     id: 'options-button-3'
-- assertVisible: 'btn3 selected=true'
+- assertVisible: 'btn3 toggled=true'
