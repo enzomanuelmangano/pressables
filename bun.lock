@@ -97,6 +97,9 @@
       },
     },
   },
+  "patchedDependencies": {
+    "expo-modules-jsi@56.0.8": "patches/expo-modules-jsi@56.0.8.patch",
+  },
   "overrides": {
     "@types/react": "~19.2.10",
   },

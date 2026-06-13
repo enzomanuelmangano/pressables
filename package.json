@@ -176,5 +176,8 @@
   "create-react-native-library": {
     "type": "library",
     "version": "0.41.2"
+  },
+  "patchedDependencies": {
+    "expo-modules-jsi@56.0.8": "patches/expo-modules-jsi@56.0.8.patch"
   }
 }
