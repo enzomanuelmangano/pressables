@@ -1,0 +1,9 @@
+# Global-handlers screen: renders, pressables fire + survive.
+appId: reactiive.pressables.example
+---
+- launchApp
+- tapOn: 'Global Handlers + Metadata'
+- assertVisible: 'Checkout'
+- tapOn: 'Checkout'
+- tapOn: 'Cancel'
+- assertVisible: 'Checkout'

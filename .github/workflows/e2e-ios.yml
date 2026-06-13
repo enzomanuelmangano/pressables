@@ -1,0 +1,108 @@
+# ennio e2e — example app on the iOS simulator.
+#
+# Builds the example app (Release, no Metro), boots a simulator, installs it,
+# and runs the .maestro/ flows through ennio (Maestro-compatible runner,
+# in-process HID + crash attribution). The published @reactiive/ennio CLI
+# ships the iOS binaries, so no native ennio build is needed here.
+name: e2e-ios
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'example/**'
+      - '.github/workflows/e2e-ios.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    name: example e2e (iOS sim)
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.19
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Select Xcode
+        run: sudo xcode-select -switch /Applications/Xcode_26.0.app
+
+      - name: Install JS deps
+        run: bun install --frozen-lockfile
+
+      # The example imports `pressto`; build the library so its `lib/` exists.
+      - name: Build pressto
+        run: bun run prepare
+
+      - name: Prebuild iOS project
+        working-directory: example
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Pod install
+        working-directory: example/ios
+        run: pod install
+
+      - name: Build example (Release, no Metro)
+        working-directory: example/ios
+        run: |
+          set -euxo pipefail
+          xcodebuild \
+            -workspace example.xcworkspace \
+            -scheme example \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            build
+          APP=$(find "$HOME/Library/Developer/Xcode/DerivedData" \
+            -path '*Release-iphonesimulator/example.app' -type d | head -n1)
+          test -n "$APP" || { echo "example.app not found"; exit 1; }
+          echo "APP_PATH=$APP" >> "$GITHUB_ENV"
+
+      - name: Boot simulator
+        id: sim
+        run: |
+          set -euxo pipefail
+          xcrun simctl boot "iPhone 16 Pro" || xcrun simctl boot "iPhone 15 Pro" || true
+          sleep 5
+          UDID=$(xcrun simctl list devices booted | awk -F '[()]' '/Booted/ {print $2; exit}')
+          test -n "$UDID" || { echo "no booted sim"; exit 1; }
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
+      - name: Install example app
+        run: xcrun simctl install "${{ steps.sim.outputs.udid }}" "$APP_PATH"
+
+      - name: Run ennio e2e flows
+        working-directory: example
+        env:
+          ENNIO_UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          set -euxo pipefail
+          PASS=0; FAIL=0
+          for f in .maestro/*.yaml; do
+            if npx --yes @reactiive/ennio test "$f" --verbose; then
+              PASS=$((PASS+1))
+            else
+              echo "RETRY $f"
+              if npx --yes @reactiive/ennio test "$f" --verbose; then
+                PASS=$((PASS+1))
+              else
+                echo "FAIL $f"; FAIL=$((FAIL+1))
+              fi
+            fi
+          done
+          echo "iOS e2e: pass=$PASS fail=$FAIL"
+          [ "$FAIL" -eq 0 ]

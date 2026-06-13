@@ -1,0 +1,13 @@
+# 1000-item list of rotation pressables: renders, scrolls, survives a press.
+appId: reactiive.pressables.example
+---
+- launchApp
+- tapOn: 'Rotation Example'
+- assertVisible:
+    id: 'rotation-list'
+- swipe:
+    direction: UP
+- swipe:
+    direction: UP
+- assertVisible:
+    id: 'rotation-list'

@@ -1,4 +1,5 @@
 import { createAnimatedPressable } from 'pressto';
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { interpolate, interpolateColor } from 'react-native-reanimated';
 
@@ -39,7 +40,23 @@ const PressableToggle = createAnimatedPressable(
   }
 );
 
+type ToggleState = { isToggled: boolean; isSelected: boolean };
+const initialButtonState: ToggleState = { isToggled: false, isSelected: false };
+
 export default function OptionsExample() {
+  // Mirror each button's pressto options (isToggled/isSelected) into React
+  // state so the result is rendered as text — visible in the demo and
+  // assertable by e2e on both iOS and Android.
+  const [state, setState] = useState<{
+    b1: ToggleState;
+    b2: ToggleState;
+    b3: ToggleState;
+  }>({
+    b1: initialButtonState,
+    b2: { isToggled: true, isSelected: false },
+    b3: initialButtonState,
+  });
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Pressable Options Demo</Text>
@@ -51,36 +68,43 @@ export default function OptionsExample() {
 
       <View style={styles.section}>
         <PressableToggle
+          testID="options-button-1"
           style={styles.item}
           onPress={(options) => {
-            console.log('Button 1 pressed:', options);
+            setState((s) => ({ ...s, b1: options }));
           }}
         >
           <Text style={styles.itemText}>Button 1</Text>
-          <Text style={styles.hint}>Logs options on press</Text>
+          <Text testID="options-status-1" style={styles.hint}>
+            {`btn1 toggled=${state.b1.isToggled} selected=${state.b1.isSelected}`}
+          </Text>
         </PressableToggle>
 
         <PressableToggle
+          testID="options-button-2"
           style={styles.item}
           initialToggled={true}
           onPress={(options) => {
-            console.log('Button 2 toggled to:', options.isToggled);
+            setState((s) => ({ ...s, b2: options }));
           }}
         >
           <Text style={styles.itemText}>Button 2 (starts toggled)</Text>
-          <Text style={styles.hint}>Logs toggle state</Text>
+          <Text testID="options-status-2" style={styles.hint}>
+            {`btn2 toggled=${state.b2.isToggled} selected=${state.b2.isSelected}`}
+          </Text>
         </PressableToggle>
 
         <PressableToggle
+          testID="options-button-3"
           style={styles.item}
           onPress={(options) => {
-            if (options.isSelected) {
-              console.log('Button 3 is now selected!');
-            }
+            setState((s) => ({ ...s, b3: options }));
           }}
         >
           <Text style={styles.itemText}>Button 3</Text>
-          <Text style={styles.hint}>Logs when selected</Text>
+          <Text testID="options-status-3" style={styles.hint}>
+            {`btn3 toggled=${state.b3.isToggled} selected=${state.b3.isSelected}`}
+          </Text>
         </PressableToggle>
       </View>
     </View>
